@@ -9,6 +9,6 @@ With OVITO Pro, you can install this modifier into your OVITO interface with:
 
 Or, for use in a standalone Python script:
 
-``pip install git+https://github.com/jwjeffr/cowley_sro_parameters.git``
+``pip install --user git+https://github.com/jwjeffr/cowley_sro_parameters.git``
 
 An example of this repository used in a standalone script is in the ``example`` directory.
