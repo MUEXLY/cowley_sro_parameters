@@ -1,4 +1,3 @@
-from functools import partial
 from itertools import combinations_with_replacement
 
 import matplotlib as mpl
