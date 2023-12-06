@@ -57,6 +57,8 @@ def sro_modifier(type_map: Mapping[int, str] = None) -> callable:
         # https://doi.org/10.1016/j.actamat.2022.117621
         sro_array = 1.0 - probability_array / (2.0 * np.outer(concentrations, concentrations))
 
+        data.attributes['frobenius_norm_sro'] = np.linalg.norm(sro_array.flatten())
+
         # store matrix elements in data collection
         for i, j in product(unique_types, repeat=2):
 
