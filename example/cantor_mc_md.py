@@ -1,5 +1,5 @@
 from functools import partial
-from itertools import combinations_with_replacement, product
+from itertools import combinations_with_replacement
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -7,46 +7,17 @@ import numpy as np
 import ovito
 from matplotlib.gridspec import GridSpec
 
-
-class Colors:
-    """
-    Color constants
-    """
-
-    COBALT = (1.0, 0.4, 0.4)
-    NICKEL = (0.4, 0.4, 1.0)
-    CHROMIUM = (1.0, 1.0, 0.0)
-    IRON = (1.0, 0.4, 1.0)
-    MANGANESE = (0.4, 1.0, 0.2)
-
-
-class Alignments:
-    """
-    Alignment flags for ovito overlays
-    """
-
-    TOP_LEFT = 33
-    BOTTOM_LEFT = 65
+from cowley_sro_parameters import sro_modifier
 
 
 # type map constant info
 TYPE_MAP = {1: 'Co', 2: 'Ni', 3: 'Cr', 4: 'Fe', 5: 'Mn'}
 INVERSE_TYPE_MAP = {val: key for key, val in TYPE_MAP.items()}
 NUM_TYPES = len(TYPE_MAP)
-TYPES = np.arange(NUM_TYPES, dtype=int)
-
-# equiatomic composition
-CONCENTRATIONS = np.ones(NUM_TYPES) / NUM_TYPES
-
-# run info
-FINAL_STEP = 5_000_000
 
 # cutoff info for SRO calculations
 FIRST_CUTOFF = 0.0
 SECOND_CUTOFF = 3.1
-
-# file types to save plots
-SUFFIXES = ['png', 'svg']
 
 
 def main():
@@ -54,12 +25,12 @@ def main():
     mpl.use('Agg')
 
     # create ovito pipeline, add a bonds modifier to create needed topology
-    pipeline = ovito.io.import_file('mc_data/mc.dump')
+    pipeline = ovito.io.import_file('mc.dump')
     bonds_modifier = ovito.modifiers.CreateBondsModifier(lower_cutoff=FIRST_CUTOFF, cutoff=SECOND_CUTOFF)
     pipeline.modifiers.append(bonds_modifier)
 
     # create SRO modifier which calculates all SRO's and the Frobenius-normed SRO matrix at each timestep
-    modifier = partial(sro_modifier, type_map=TYPE_MAP)
+    modifier = sro_modifier(type_map=TYPE_MAP)
     pipeline.modifiers.append(modifier)
 
     # initialize atom pairs
@@ -69,7 +40,6 @@ def main():
     frames = np.arange(pipeline.source.num_frames)
     timestep = np.zeros(frames.shape)
     sro_params = np.zeros((frames.shape[0], NUM_TYPES, NUM_TYPES))
-    frobenius_norms = np.zeros(frames.shape)
 
     # store data attributes in initialized arrays
     for frame in frames:
@@ -79,7 +49,6 @@ def main():
         for e1, e2 in pairs:
             i, j = INVERSE_TYPE_MAP[e1], INVERSE_TYPE_MAP[e2]
             sro_params[frame, i - 1, j - 1] = data.attributes[f'sro_{e1}{e2}']
-        frobenius_norms[frame] = data.attributes['frobenius_norm_sro']
 
     # first, create gridspec for SRO plots
     fig = plt.figure()
@@ -121,21 +90,7 @@ def main():
 
     fig.tight_layout()
 
-    for suffix in SUFFIXES:
-        fig.savefig(f'plots/sro_params.{suffix}', dpi=800, bbox_inches='tight')
-
-    # next, create Frobenius-normed SRO matrix time series
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.plot(1e-6 * timestep, frobenius_norms, color='black')
-    ax.grid()
-    ax.set_xlabel('MC-MD time (ns)')
-    ax.set_ylabel('frobenius norm of SRO matrix ($Q$)')
-
-    fig.tight_layout()
-
-    for suffix in SUFFIXES:
-        fig.savefig(f'plots/frobenius.{suffix}', dpi=800, bbox_inches='tight')
+    fig.savefig('sro_params.svg', bbox_inches='tight')
 
 
 if __name__ == '__main__':
