@@ -11,7 +11,7 @@ This code is intended to also interface with OVITO Pro, but this feature has not
 
 ``ovitos -m pip install --user cowley_sro_parameters``
 
-An example of this repository used in a standalone script is in the `/example`_ directory. This package is a derivative of a larger work on vacancy concentration. If you find this package useful, please cite [our work on vacancy concentration](https://arxiv.org/abs/2402.07324) as well as the repository itself:
+An example of this repository used in a standalone script is in the `/example` directory. This package is a derivative of a larger work on vacancy concentration. If you find this package useful, please cite [our work on vacancy concentration](https://arxiv.org/abs/2402.07324) as well as the repository itself:
 
 ```bibtex
 @misc{jeffries_sro_parameters,
