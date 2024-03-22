@@ -2,7 +2,39 @@ from itertools import product
 from typing import Mapping
 
 import numpy as np
-from ovito.data import DataCollection
+from ovito.data import DataCollection, NearestNeighborFinder
+
+
+def nearest_neighbor_topology(num_neighbors: int) -> callable:
+    """
+    Callable modifier that stores topology from a set of nearest neighbors
+    :param num_neighbors: number of nearest neighbors to find per atom
+    :return: callable modifier
+    """
+
+    def wrapper(frame: int, data: DataCollection) -> None:
+        """
+        Wrapper function that acts as the topology creation modifier
+        :param frame: frame to evaluate SRO parameters (needed for OVITO custom modifier interface)
+        :param data: data collection to modify
+        :return: None
+        """
+
+        finder = NearestNeighborFinder(num_neighbors, data)
+        topology = set()
+
+        for index in range(data.particles.count):
+
+            for neigh in finder.find(index):
+                pair = (index, neigh.index)
+                if pair in topology or (pair[1], pair[0]) in topology:
+                    continue
+                topology.add(pair)
+
+        bonds = data.particles_.create_bonds(count=len(topology))
+        bonds.create_property('Topology', data=list(topology))
+    
+    return wrapper
 
 
 def sro_modifier(type_map: Mapping[int, str] = None) -> callable:

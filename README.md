@@ -1,6 +1,6 @@
 # Cowley short range order parameter modifier
 
-This repository contains an OVITO modifier that calculates the Cowley short range order parameters from a precomputed bond topology.
+This repository contains an OVITO modifier that calculates the Cowley short range order parameters from a precomputed bond topology, as well as a modifier for creating a bond topology from a set of nearest neighbors.
 
 For use in a standalone Python script:
 

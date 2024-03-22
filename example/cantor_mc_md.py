@@ -6,7 +6,7 @@ import numpy as np
 import ovito
 from matplotlib.gridspec import GridSpec
 
-from cowley_sro_parameters import sro_modifier
+from cowley_sro_parameters import nearest_neighbor_topology, sro_modifier
 
 
 # type map constant info
@@ -15,8 +15,7 @@ INVERSE_TYPE_MAP = {val: key for key, val in TYPE_MAP.items()}
 NUM_TYPES = len(TYPE_MAP)
 
 # cutoff info for SRO calculations
-FIRST_CUTOFF = 0.0
-SECOND_CUTOFF = 3.1
+NUM_NEAREST_NEIGHBORS = 12
 
 
 def main():
@@ -25,10 +24,10 @@ def main():
 
     # create ovito pipeline, add a bonds modifier to create needed topology
     pipeline = ovito.io.import_file('mc.dump')
-    bonds_modifier = ovito.modifiers.CreateBondsModifier(lower_cutoff=FIRST_CUTOFF, cutoff=SECOND_CUTOFF)
-    pipeline.modifiers.append(bonds_modifier)
+    nearest_neighbor_modifier = nearest_neighbor_topology(NUM_NEAREST_NEIGHBORS)
+    pipeline.modifiers.append(nearest_neighbor_modifier)
 
-    # create SRO modifier which calculates all SRO's and the Frobenius-normed SRO matrix at each timestep
+    # create SRO modifier which calculates all SRO's
     modifier = sro_modifier(type_map=TYPE_MAP)
     pipeline.modifiers.append(modifier)
 
