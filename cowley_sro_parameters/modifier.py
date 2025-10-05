@@ -1,4 +1,3 @@
-from itertools import product
 from typing import Mapping
 
 import numpy as np
@@ -56,51 +55,60 @@ def sro_modifier(type_map: Mapping[int, str] = None) -> callable:
         # get bond topology
         topology = np.array(data.particles.bonds.topology[...], dtype=int)
 
-        # get types of each particle, and associated quantities
-        types = np.array(data.particles['Particle Type'][...], dtype=int)
-        unique_types = list(set(types))
-        num_types = len(unique_types)
+        # if particle type names are available, use them
+        particle_types = [t.name for t in data.particles.particle_types.types]
+        type_ids = [data.particles.particle_types.type_by_name(t).id for t in particle_types]
 
-        # calculate concentrations
-        concentrations = np.zeros(num_types)
-        for i, type_ in enumerate(unique_types):
-            concentrations[i] = np.mean(types == type_)
+        # if not available, just use numeric IDs
+        if all(t == "" for t in particle_types):
+            particle_types = np.unique(data.particles.particle_types[...])
+            type_ids = particle_types.copy()
+
+        type_map_ = {id_: t for id_, t in zip(type_ids, particle_types)}
+
+        concentrations = {}
+        for id_, t in zip(type_ids, particle_types):
+            concentrations[t] = (data.particles.particle_types == id_).mean()
 
         # initialize an array that stores the number of (i, j) bonds we have
         # where i and j are particle types
-        bond_types_count_array = np.zeros((num_types, num_types))
+        # bond_types_count_array = np.zeros((num_types, num_types))
+
+        bond_count_map = {}
+        for first_type in particle_types:
+            for second_type in particle_types:
+                bond_count_map[first_type, second_type] = 0
 
         for index, bond in enumerate(topology):
             # get particle indexes from bond
             first_atom, second_atom = bond
 
             # get types of those particle indexes
-            first_type, second_type = types[first_atom], types[second_atom]
+            # first_type, second_type = types[first_atom], types[second_atom]
+            first_type = type_map_[data.particles.particle_types[first_atom]]
+            second_type = type_map_[data.particles.particle_types[second_atom]]
 
             # count that bond
-            bond_types_count_array[first_type - 1, second_type - 1] += 1
+            bond_count_map[first_type, second_type] += 1
 
-        # normalize by the number of bonds we have, make array symmetric
-        probability_array = bond_types_count_array / len(topology)
-        probability_array += probability_array.T
+        # normalize by total number of bonds
+        bond_count_map = {key: val / len(topology) for key, val in bond_count_map.items()}
 
-        # calculate sro_array
-        # outer gives array such that O[i, j] = c[i] * c[j]
-        # https://doi.org/10.1016/j.actamat.2022.117621
-        sro_array = 1.0 - probability_array / (2.0 * np.outer(concentrations, concentrations))
+        # symmetrize
+        symmetrized_bond_count_map = {}
+        for key, val in bond_count_map.items():
+            reversed_key = (key[1], key[0])
+            symmetrized_bond_count_map[key] = val + bond_count_map[reversed_key]
 
-        data.attributes['frobenius_norm_sro'] = np.linalg.norm(sro_array.flatten())
+        sro_map = {}
+        for key, val in symmetrized_bond_count_map.items():
+            sro_map[key] = 1.0 - val / (2.0 * concentrations[key[0]] * concentrations[key[1]])
 
-        # store matrix elements in data collection
-        for i, j in product(unique_types, repeat=2):
-
-            # if a type map is provided, store values with atom names
-            # else, store with integer type labels
-            sro = sro_array[i - 1, j - 1]
-            if not type_map:
-                key = f'sro_{i}{j}'
-            else:
-                key = f'sro_{type_map[i]}{type_map[j]}'
-            data.attributes[key] = sro
+        for key, val in sro_map.items():
+            i, j = key
+            if type_map is not None:
+                i = type_map[i]
+                j = type_map[j]
+            data.attributes[f"sro_{i}{j}"] = val
 
     return wrapper
